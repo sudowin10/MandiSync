@@ -77,7 +77,7 @@ python -m pytest tests/ -v
 
 ---
 
-## 📱 Flutter SDK for Anshul's UI
+## 📱 Flutter SDK for UI
 
 Copy `flutter_sdk/lib/` into your Flutter project. See [`flutter_sdk/README.md`](flutter_sdk/README.md) for full wiring instructions.
 
