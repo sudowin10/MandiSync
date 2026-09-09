@@ -1,0 +1,34 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets (never bake into Docker image)
+.env
+*.env
+
+# ML model files (large binaries — mount at runtime)
+ml_engine/models/
+
+# Flutter build output (not needed inside backend image)
+flutter_sdk/
+
+# Git metadata
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log

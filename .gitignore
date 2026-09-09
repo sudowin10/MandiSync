@@ -1,0 +1,71 @@
+# ============================
+# Python / ML Engine
+# ============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment Variables (NEVER commit secrets)
+.env
+.env.local
+.env.production
+*.env
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# ML Model Artifacts (too large for GitHub, store in drive or cloud)
+ml_engine/models/*.pkl
+ml_engine/models/*.joblib
+
+# ============================
+# Flutter / Dart
+# ============================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+*.lock
+
+# Flutter web build output
+flutter_sdk/build/
+flutter_sdk/.dart_tool/
+
+# ============================
+# Docker
+# ============================
+.docker/
+
+# ============================
+# IDE & OS Files
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================
+# Logs & Temporary Files
+# ============================
+*.log
+*.tmp
+*.bak
+logs/

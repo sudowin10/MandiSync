@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MandiSync AI — Smart Agri-Commerce & Mandi Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="logo-container">
+      <div class="logo-badge">🌾</div>
+      <div>
+        <h1 class="logo-title">MandiSync <span class="ai-badge">AI 2.0</span></h1>
+        <p class="logo-sub">Smart Mandi Forecasts • Logistics Pooling • ONDC Beckn Gateway</p>
+      </div>
+    </div>
+    <div class="cluster-status-card">
+      <div class="status-indicator online"></div>
+      <div class="status-info">
+        <span class="status-title">Atlas Cluster Connected</span>
+        <span class="status-desc" id="status-db-text">309+ Mandi Records Live</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tab-nav">
+    <button class="nav-btn active" data-tab="tab-predict">
+      <span class="tab-icon">📈</span> AI Price Forecast (fl_chart)
+    </button>
+    <button class="nav-btn" data-tab="tab-market">
+      <span class="tab-icon">🏛️</span> Live Mandi Prices
+    </button>
+    <button class="nav-btn" data-tab="tab-crops">
+      <span class="tab-icon">🌱</span> Crop Catalog & MSP
+    </button>
+    <button class="nav-btn" data-tab="tab-logistics">
+      <span class="tab-icon">🚚</span> Logistics & Backhaul Quotes
+    </button>
+    <button class="nav-btn" data-tab="tab-scaffold">
+      <span class="tab-icon">🛡️</span> KYC & User Stats
+    </button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+    
+    <!-- 1. AI Price Forecast Tab -->
+    <section id="tab-predict" class="tab-pane active">
+      <div class="grid-2col">
+        <!-- Controls Card -->
+        <div class="card glass-card">
+          <h2 class="card-title">🔮 XGBoost Price Inference</h2>
+          <p class="card-desc">Simulate live price predictions and multi-day trend bands powered by the serialized model.</p>
+          
+          <form id="predict-form" class="form-grid">
+            <div class="form-group">
+              <label for="p-commodity">Commodity</label>
+              <select id="p-commodity" class="input-control">
+                <option value="Onion" selected>Onion (Garva / Red)</option>
+                <option value="Wheat">Wheat (Sharbati / Lokwan)</option>
+                <option value="Tomato">Tomato (Hybrid)</option>
+                <option value="Potato">Potato (Jyoti / Kufri)</option>
+                <option value="Soybean">Soybean (Yellow)</option>
+                <option value="Cotton">Cotton</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="p-market">Target APMC Mandi</label>
+              <input type="text" id="p-market" class="input-control" value="Lasalgaon" placeholder="e.g. Lasalgaon, Indore, Azadpur">
+            </div>
+
+            <div class="form-group">
+              <label for="p-modal">Latest Modal Price (₹/Qtl)</label>
+              <input type="number" id="p-modal" class="input-control" value="2450" step="10">
+            </div>
+
+            <div class="form-group">
+              <label for="p-arrivals">Daily Arrivals (Tonnes)</label>
+              <input type="number" id="p-arrivals" class="input-control" value="350" step="5">
+            </div>
+
+            <div class="form-group">
+              <label for="p-days">Forecast Horizon (Days)</label>
+              <input type="range" id="p-days" min="3" max="14" value="7" class="slider-control" oninput="document.getElementById('days-val').innerText = this.value">
+              <div class="slider-label"><span id="days-val">7</span> Days Ahead</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="btn-run-inference">
+              <span>⚡ Generate 7-Day Forecast</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Chart Display Card -->
+        <div class="card glass-card">
+          <div class="card-header-flex">
+            <div>
+              <h2 class="card-title">📊 7-Day Price Trajectory</h2>
+              <p class="card-desc" id="chart-sub">Live simulation matches Flutter <code>fl_chart</code> specs</p>
+            </div>
+            <div class="badge-pill" id="badge-model-ver">price_predictor_v1</div>
+          </div>
+
+          <div class="chart-wrapper">
+            <canvas id="forecastChart"></canvas>
+          </div>
+
+          <!-- Forecast Stats Cards -->
+          <div class="mini-stats-grid" id="forecast-summary">
+            <div class="mini-stat-card">
+              <span class="mini-stat-label">Day 1 Forecast</span>
+              <span class="mini-stat-val text-accent" id="stat-d1">₹2,521</span>
+            </div>
+            <div class="mini-stat-card">
+              <span class="mini-stat-label">Suggested Floor</span>
+              <span class="mini-stat-val text-success" id="stat-rec">₹2,320</span>
+            </div>
+            <div class="mini-stat-card">
+              <span class="mini-stat-label">Confidence Band</span>
+              <span class="mini-stat-val text-warning" id="stat-ci">± ₹1,079</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Live Mandi Prices Tab -->
+    <section id="tab-market" class="tab-pane">
+      <div class="card glass-card">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="card-title">🏛️ Agmarknet Live Market Feed</h2>
+            <p class="card-desc">Querying 300+ government records fetched from MongoDB Atlas</p>
+          </div>
+          <div class="filter-group">
+            <input type="text" id="market-search" class="input-control search-input" placeholder="Search crop or mandi (e.g. Wheat, Punjab, Nashik)...">
+            <button class="btn btn-secondary" id="btn-refresh-market">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Commodity</th>
+                <th>Variety</th>
+                <th>APMC Mandi</th>
+                <th>State</th>
+                <th>Min (₹)</th>
+                <th>Max (₹)</th>
+                <th>Modal Price (₹/Qtl)</th>
+                <th>Arrivals (T)</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="market-table-body">
+              <tr><td colspan="9" class="text-center py-4">Loading Agmarknet live prices...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Crops Catalog Tab -->
+    <section id="tab-crops" class="tab-pane">
+      <div class="card glass-card">
+        <div class="card-header-flex">
+          <div>
+            <h2 class="card-title">🌱 Crop Catalog & Minimum Support Price (MSP)</h2>
+            <p class="card-desc">Catalog used across ONDC harvest listings and trading lots</p>
+          </div>
+          <button class="btn btn-secondary" id="btn-refresh-crops">🔄 Reload Catalog</button>
+        </div>
+        <div class="cards-grid" id="crops-grid">
+          <!-- Crop cards dynamically injected -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Logistics & Backhaul Tab -->
+    <section id="tab-logistics" class="tab-pane">
+      <div class="grid-2col">
+        <!-- Quote Calculator -->
+        <div class="card glass-card">
+          <h2 class="card-title">🚚 Request Delivery Quote & Backhaul</h2>
+          <p class="card-desc">Smart matching finds returning empty trucks near pickup point to cut costs by 20–40%.</p>
+
+          <form id="quote-form" class="form-grid">
+            <div class="form-group">
+              <label for="q-origin">Pickup Location</label>
+              <input type="text" id="q-origin" class="input-control" value="Nashik" required>
+            </div>
+            <div class="form-group">
+              <label for="q-dest">Drop-off Destination</label>
+              <input type="text" id="q-dest" class="input-control" value="Mumbai" required>
+            </div>
+            <div class="form-group">
+              <label for="q-weight">Cargo Weight (kg)</label>
+              <input type="number" id="q-weight" class="input-control" value="1500" required>
+            </div>
+            <div class="form-group">
+              <label for="q-dist">Distance (km)</label>
+              <input type="number" id="q-dist" class="input-control" value="165" required>
+            </div>
+            <div class="form-group">
+              <label for="q-crop">Crop Type</label>
+              <input type="text" id="q-crop" class="input-control" value="Onion">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+              <span>⚡ Compute Smart Quote</span>
+            </button>
+          </form>
+
+          <div id="quote-result-box" class="quote-result hidden">
+            <!-- Injected quote details -->
+          </div>
+        </div>
+
+        <!-- Available Transporters -->
+        <div class="card glass-card">
+          <h2 class="card-title">🚛 Active Fleet & Transporters (31 Listed)</h2>
+          <p class="card-desc">Live status of trucks and returning-empty backhaul opportunities.</p>
+          <div class="provider-list" id="providers-list">
+            <!-- Injected provider cards -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Mock & KYC Tab -->
+    <section id="tab-scaffold" class="tab-pane">
+      <div class="grid-2col">
+        <div class="card glass-card">
+          <h2 class="card-title">🆔 Aadhaar / DigiLocker KYC Verification</h2>
+          <p class="card-desc">Scaffolded identity verification flow for seamless frontend onboarding.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Aadhaar Number</label>
+              <input type="text" class="input-control" placeholder="XXXX-XXXX-XXXX" value="5489 1234 5678">
+            </div>
+            <button class="btn btn-primary" id="btn-test-kyc">🔐 Send Aadhaar OTP</button>
+          </div>
+          <div id="kyc-response" class="code-box hidden"></div>
+        </div>
+
+        <div class="card glass-card">
+          <h2 class="card-title">📊 Live Dashboard Stats (Mock / Real)</h2>
+          <p class="card-desc">Endpoints consumed by Flutter summary counters.</p>
+          <button class="btn btn-secondary mb-3" id="btn-test-stats">🔄 Fetch Dashboard Stats</button>
+          <div id="stats-response" class="code-box">Click button to fetch stats...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <p>MandiSync AI • Smart India Hackathon SIH 2026 • Connected to FastAPI & MongoDB Atlas</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
