@@ -14,8 +14,8 @@ env/
 .env
 *.env
 
-# ML model files (large binaries — mount at runtime)
-ml_engine/models/
+# ML model files (allow lightweight production model)
+# ml_engine/models/price_predictor_v1.pkl is included in image
 
 # Flutter build output (not needed inside backend image)
 flutter_sdk/

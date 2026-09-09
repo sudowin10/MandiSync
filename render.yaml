@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: mandisync-api
+    runtime: python
+    buildCommand: pip install --upgrade pip && pip install -r backend_api/requirements.txt
+    startCommand: uvicorn backend_api.app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /health
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: MONGO_URI
+        value: mongodb+srv://abhi20singhbhati_db_user:4D6ZmP790VgmSqgX@cluster0.sgu4gdt.mongodb.net/?retryWrites=true&w=majority
+      - key: MONGO_DB_NAME
+        value: mandisync_db
+      - key: ENVIRONMENT
+        value: production

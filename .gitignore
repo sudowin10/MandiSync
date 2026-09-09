@@ -26,9 +26,9 @@ build/
 venv/
 env/
 
-# ML Model Artifacts (too large for GitHub, store in drive or cloud)
-ml_engine/models/*.pkl
+# ML Model Artifacts (allow lightweight 450KB production model)
 ml_engine/models/*.joblib
+!ml_engine/models/price_predictor_v1.pkl
 
 # ============================
 # Flutter / Dart

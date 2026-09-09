@@ -59,5 +59,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
 
 EXPOSE 8000
 
-# Run Uvicorn with production workers
-CMD ["uvicorn", "backend_api.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Run Uvicorn with dynamic cloud PORT support (defaults to 8000 locally)
+CMD ["sh", "-c", "uvicorn backend_api.app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 2"]
