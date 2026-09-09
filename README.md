@@ -111,10 +111,12 @@ final forecast = await api.getPriceForecast(commodity: 'Onion', market: 'Lasalga
 
 | Name | Role |
 |---|---|
-| You (Backend Lead) | FastAPI, ML Engine, MongoDB Atlas, Docker |
-| Abhijeet | Data Engineering, Agmarknet Ingestion |
-| Anshul | Flutter UI, fl_chart, UX Design |
-
+| Amritanshu (Team leader) | FastAPI, ML Engine, Backend |
+| Abhijeet | Data Engineering, Agmarknet Ingestion , MongoDB Atlas |
+| Anshul | Flutter UI |
+| Kartikey | Deployment, Git, Docker |
+| Thanay | Design |
+| Gunjan | Pitching |
 ---
 
 *MandiSync AI — Smart India Hackathon SIH 2026*
