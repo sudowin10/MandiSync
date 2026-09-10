@@ -172,7 +172,7 @@ class PredictionResultModel {
       confidenceHigh: (json['confidence_interval_high'] as num?)?.toDouble(),
       targetDate: json['target_date'],
       modelVersion: json['model_version'] ?? 'xgboost-v1.4',
-      inferenceLatencyMs: json['inference_latency_ms'] as int?,
+      inferenceLatencyMs: (json['inference_latency_ms'] as num?)?.toInt(),
     );
   }
 }
