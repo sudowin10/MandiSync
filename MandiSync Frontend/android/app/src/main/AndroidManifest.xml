@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for OpenStreetMap tiles + OSRM route API -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="mandisync_flutter"
         android:name="${applicationName}"

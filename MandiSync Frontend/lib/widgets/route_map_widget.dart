@@ -1,18 +1,61 @@
-// =========================================================
-// MANDISYNC FLUTTER — DYNAMIC SMART LOGISTICS ROUTE MAP WIDGET
-// Dynamically recalculates path, waypoints, and metrics based on selected route
+﻿// =========================================================
+// MANDISYNC FLUTTER — OPENSTREETMAP LOGISTICS MAP WIDGET
+// Uses flutter_map + OpenStreetMap tiles (free, no API key)
+// Real OSRM routing for live route polylines
 // =========================================================
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
 
-class RouteWaypoint {
-  final String name;
-  final double x; // normalized 0.0 - 1.0
-  final double y; // normalized 0.0 - 1.0
-
-  const RouteWaypoint(this.name, this.x, this.y);
+// ─── City geocode database (lat/lng for Indian agri cities) ─────────────────
+class _CityCoord {
+  final double lat;
+  final double lng;
+  final String displayName;
+  const _CityCoord(this.lat, this.lng, this.displayName);
 }
 
+const Map<String, _CityCoord> _cityDB = {
+  'ludhiana': _CityCoord(30.9010, 75.8573, 'Ludhiana'),
+  'delhi': _CityCoord(28.6139, 77.2090, 'Delhi'),
+  'nashik': _CityCoord(19.9975, 73.7898, 'Nashik'),
+  'mumbai': _CityCoord(19.0760, 72.8777, 'Mumbai'),
+  'indore': _CityCoord(22.7196, 75.8577, 'Indore'),
+  'ahmedabad': _CityCoord(23.0225, 72.5714, 'Ahmedabad'),
+  'jaipur': _CityCoord(26.9124, 75.7873, 'Jaipur'),
+  'pune': _CityCoord(18.5204, 73.8567, 'Pune'),
+  'chandigarh': _CityCoord(30.7333, 76.7794, 'Chandigarh'),
+  'amritsar': _CityCoord(31.6340, 74.8723, 'Amritsar'),
+  'hyderabad': _CityCoord(17.3850, 78.4867, 'Hyderabad'),
+  'bangalore': _CityCoord(12.9716, 77.5946, 'Bangalore'),
+  'chennai': _CityCoord(13.0827, 80.2707, 'Chennai'),
+  'kolkata': _CityCoord(22.5726, 88.3639, 'Kolkata'),
+  'bhopal': _CityCoord(23.2599, 77.4126, 'Bhopal'),
+  'nagpur': _CityCoord(21.1458, 79.0882, 'Nagpur'),
+  'surat': _CityCoord(21.1702, 72.8311, 'Surat'),
+  'lucknow': _CityCoord(26.8467, 80.9462, 'Lucknow'),
+  'patna': _CityCoord(25.5941, 85.1376, 'Patna'),
+  'kota': _CityCoord(25.2138, 75.8648, 'Kota'),
+  'agra': _CityCoord(27.1767, 78.0081, 'Agra'),
+  'varanasi': _CityCoord(25.3176, 82.9739, 'Varanasi'),
+  'coimbatore': _CityCoord(11.0168, 76.9558, 'Coimbatore'),
+  'visakhapatnam': _CityCoord(17.6868, 83.2185, 'Visakhapatnam'),
+  'rajkot': _CityCoord(22.3039, 70.8022, 'Rajkot'),
+  'vadodara': _CityCoord(22.3072, 73.1812, 'Vadodara'),
+};
+
+_CityCoord? _resolveCity(String query) {
+  final q = query.toLowerCase().trim();
+  for (final key in _cityDB.keys) {
+    if (q.contains(key)) return _cityDB[key];
+  }
+  return null;
+}
+
+// ─── Route data model ────────────────────────────────────────────────────────
 class RouteDetails {
   final String origin;
   final String destination;
@@ -20,11 +63,6 @@ class RouteDetails {
   final String estimatedHours;
   final int co2SavedPct;
   final String sharedFarmers;
-  final double startX;
-  final double startY;
-  final double endX;
-  final double endY;
-  final List<RouteWaypoint> waypoints;
 
   const RouteDetails({
     required this.origin,
@@ -33,147 +71,10 @@ class RouteDetails {
     required this.estimatedHours,
     required this.co2SavedPct,
     required this.sharedFarmers,
-    required this.startX,
-    required this.startY,
-    required this.endX,
-    required this.endY,
-    required this.waypoints,
   });
-
-  static RouteDetails resolve(String rawOrigin, String rawDest) {
-    final orig = rawOrigin.trim().toLowerCase();
-    final dest = rawDest.trim().toLowerCase();
-
-    // 1. Ludhiana to Delhi
-    if (orig.contains("ludhiana") || dest.contains("delhi")) {
-      if (orig.contains("ludhiana")) {
-        return const RouteDetails(
-          origin: "Ludhiana, Punjab",
-          destination: "Delhi, NCR",
-          distanceKm: 180,
-          estimatedHours: "4.5 hours",
-          co2SavedPct: 28,
-          sharedFarmers: "3 Farmers • 1 Truck",
-          startX: 0.20,
-          startY: 0.22,
-          endX: 0.72,
-          endY: 0.82,
-          waypoints: [
-            RouteWaypoint("Ambala", 0.38, 0.42),
-            RouteWaypoint("Panipat", 0.54, 0.65),
-          ],
-        );
-      }
-    }
-
-    // 2. Nashik to Mumbai
-    if (orig.contains("nashik") || (orig.contains("mumbai") && dest.contains("nashik")) || dest.contains("mumbai")) {
-      if (orig.contains("nashik") || dest.contains("mumbai")) {
-        return const RouteDetails(
-          origin: "Nashik, Maharashtra",
-          destination: "Mumbai, Maharashtra",
-          distanceKm: 168,
-          estimatedHours: "3.8 hours",
-          co2SavedPct: 32,
-          sharedFarmers: "2 Farmers • 1 Truck",
-          startX: 0.22,
-          startY: 0.25,
-          endX: 0.78,
-          endY: 0.82,
-          waypoints: [
-            RouteWaypoint("Kasara Ghat", 0.42, 0.46),
-            RouteWaypoint("Kalyan APMC", 0.60, 0.66),
-          ],
-        );
-      }
-    }
-
-    // 3. Indore to Ahmedabad
-    if (orig.contains("indore") || dest.contains("ahmedabad")) {
-      return const RouteDetails(
-        origin: "Indore, Madhya Pradesh",
-        destination: "Ahmedabad, Gujarat",
-        distanceKm: 385,
-        estimatedHours: "6.5 hours",
-        co2SavedPct: 35,
-        sharedFarmers: "4 Farmers • 1 Truck",
-        startX: 0.18,
-        startY: 0.25,
-        endX: 0.82,
-        endY: 0.78,
-        waypoints: [
-          RouteWaypoint("Dhar Mandi", 0.38, 0.40),
-          RouteWaypoint("Godhra Bypass", 0.62, 0.60),
-        ],
-      );
-    }
-
-    // 4. Jaipur to Delhi
-    if (orig.contains("jaipur")) {
-      return const RouteDetails(
-        origin: "Jaipur, Rajasthan",
-        destination: "Delhi, NCR",
-        distanceKm: 280,
-        estimatedHours: "4.5 hours",
-        co2SavedPct: 30,
-        sharedFarmers: "3 Farmers • 1 Truck",
-        startX: 0.22,
-        startY: 0.78,
-        endX: 0.75,
-        endY: 0.25,
-        waypoints: [
-          RouteWaypoint("Kotputli", 0.40, 0.58),
-          RouteWaypoint("Gurgaon Hub", 0.60, 0.38),
-        ],
-      );
-    }
-
-    // 5. Pune to Mumbai
-    if (orig.contains("pune")) {
-      return const RouteDetails(
-        origin: "Pune, Maharashtra",
-        destination: "Mumbai, Maharashtra",
-        distanceKm: 150,
-        estimatedHours: "3.0 hours",
-        co2SavedPct: 26,
-        sharedFarmers: "2 Farmers • 1 Truck",
-        startX: 0.25,
-        startY: 0.75,
-        endX: 0.78,
-        endY: 0.28,
-        waypoints: [
-          RouteWaypoint("Lonavala", 0.48, 0.52),
-          RouteWaypoint("Navi Mumbai", 0.66, 0.38),
-        ],
-      );
-    }
-
-    // Dynamic fallback for any user-typed city
-    final cleanOrig = rawOrigin.isEmpty ? "Origin Mandi" : rawOrigin;
-    final cleanDest = rawDest.isEmpty ? "Destination Market" : rawDest;
-    final dist = ((cleanOrig.length * 17 + cleanDest.length * 23) % 350 + 120).toDouble();
-    final hrs = (dist / 45.0).toStringAsFixed(1);
-    final co2 = (22 + (dist.toInt() % 16));
-
-    return RouteDetails(
-      origin: cleanOrig,
-      destination: cleanDest,
-      distanceKm: dist,
-      estimatedHours: "$hrs hours",
-      co2SavedPct: co2,
-      sharedFarmers: "3 Farmers • 1 Truck",
-      startX: 0.20,
-      startY: 0.25,
-      endX: 0.78,
-      endY: 0.80,
-      waypoints: [
-        RouteWaypoint("Central Corridor Hub", 0.42, 0.45),
-        RouteWaypoint("Regional APMC Gateway", 0.62, 0.65),
-      ],
-    );
-  }
 }
 
+// ─── Main Widget ─────────────────────────────────────────────────────────────
 class RouteMapWidget extends StatefulWidget {
   final String origin;
   final String destination;
@@ -190,29 +91,158 @@ class RouteMapWidget extends StatefulWidget {
   State<RouteMapWidget> createState() => _RouteMapWidgetState();
 }
 
-class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProviderStateMixin {
-  double _zoom = 1.0;
-  late AnimationController _pulseCtrl;
+class _RouteMapWidgetState extends State<RouteMapWidget> {
+  final MapController _mapController = MapController();
+
+  bool _isLoading = false;
+  String? _errorMsg;
+
+  List<LatLng> _routePoints = [];
+  RouteDetails? _routeDetails;
+
+  _CityCoord? _originCoord;
+  _CityCoord? _destCoord;
 
   @override
   void initState() {
     super.initState();
-    _pulseCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
+    _loadRoute();
   }
 
   @override
-  void dispose() {
-    _pulseCtrl.dispose();
-    super.dispose();
+  void didUpdateWidget(RouteMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.origin != widget.origin ||
+        oldWidget.destination != widget.destination) {
+      _loadRoute();
+    }
+  }
+
+  Future<void> _loadRoute() async {
+    final originCoord = _resolveCity(widget.origin);
+    final destCoord = _resolveCity(widget.destination);
+
+    if (originCoord == null || destCoord == null) {
+      setState(() {
+        _errorMsg =
+            'Could not locate "${originCoord == null ? widget.origin : widget.destination}". Try a major Indian city.';
+        _routePoints = [];
+        _routeDetails = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMsg = null;
+      _originCoord = originCoord;
+      _destCoord = destCoord;
+    });
+
+    try {
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${originCoord.lng},${originCoord.lat};'
+        '${destCoord.lng},${destCoord.lat}'
+        '?overview=full&geometries=geojson',
+      );
+
+      final response =
+          await http.get(url).timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final routes = data['routes'] as List;
+
+        if (routes.isNotEmpty) {
+          final route = routes[0];
+          final coords = route['geometry']['coordinates'] as List;
+          final points = coords
+              .map((c) => LatLng(c[1].toDouble(), c[0].toDouble()))
+              .toList();
+
+          final distanceM = (route['distance'] as num).toDouble();
+          final durationS = (route['duration'] as num).toDouble();
+          final distKm = distanceM / 1000.0;
+          final hours = durationS / 3600.0;
+          final hStr = '${hours.toStringAsFixed(1)} hours';
+
+          setState(() {
+            _routePoints = points;
+            _routeDetails = RouteDetails(
+              origin: originCoord.displayName,
+              destination: destCoord.displayName,
+              distanceKm: distKm,
+              estimatedHours: hStr,
+              co2SavedPct: (22 + (distKm % 16).toInt()).clamp(22, 40),
+              sharedFarmers:
+                  distKm > 300 ? '4 Farmers • 2 Trucks' : '3 Farmers • 1 Truck',
+            );
+            _isLoading = false;
+          });
+
+          if (points.isNotEmpty) {
+            Future.delayed(const Duration(milliseconds: 200), () {
+              if (mounted) {
+                final bounds = LatLngBounds.fromPoints(points);
+                _mapController.fitCamera(
+                  CameraFit.bounds(
+                    bounds: bounds,
+                    padding: const EdgeInsets.all(48),
+                  ),
+                );
+              }
+            });
+          }
+        } else {
+          _setFallback(originCoord, destCoord, 'No route found between cities.');
+        }
+      } else {
+        _setFallback(
+            originCoord, destCoord, 'Route service unavailable. Showing direct path.');
+      }
+    } catch (_) {
+      _setFallback(
+        originCoord,
+        destCoord,
+        'Offline or timeout — showing straight-line estimate.',
+      );
+    }
+  }
+
+  void _setFallback(_CityCoord orig, _CityCoord dest, String msg) {
+    final distKm = const Distance().as(
+      LengthUnit.Kilometer,
+      LatLng(orig.lat, orig.lng),
+      LatLng(dest.lat, dest.lng),
+    );
+    setState(() {
+      _isLoading = false;
+      _errorMsg = msg;
+      _routePoints = [LatLng(orig.lat, orig.lng), LatLng(dest.lat, dest.lng)];
+      _routeDetails = RouteDetails(
+        origin: orig.displayName,
+        destination: dest.displayName,
+        distanceKm: distKm,
+        estimatedHours: '${(distKm / 60).toStringAsFixed(1)} hours (est.)',
+        co2SavedPct: 28,
+        sharedFarmers: '3 Farmers • 1 Truck',
+      );
+    });
+  }
+
+  LatLng get _mapCenter {
+    if (_originCoord != null && _destCoord != null) {
+      return LatLng(
+        (_originCoord!.lat + _destCoord!.lat) / 2,
+        (_originCoord!.lng + _destCoord!.lng) / 2,
+      );
+    }
+    return const LatLng(22.5, 78.9);
   }
 
   @override
   Widget build(BuildContext context) {
-    final route = RouteDetails.resolve(widget.origin, widget.destination);
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -220,8 +250,8 @@ class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProvid
         border: Border.all(color: const Color(0xFFDFE7E2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -236,18 +266,18 @@ class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProvid
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(flex: 3, child: _buildMapCanvas(route)),
+                  Expanded(flex: 3, child: _buildMapArea()),
                   Container(width: 1, color: const Color(0xFFDFE7E2)),
-                  Expanded(flex: 2, child: _buildMetricsSidebar(route)),
+                  Expanded(flex: 2, child: _buildMetricsSidebar()),
                 ],
               ),
             );
           } else {
             return Column(
               children: [
-                SizedBox(height: 250, child: _buildMapCanvas(route)),
+                SizedBox(height: 280, child: _buildMapArea()),
                 const Divider(height: 1, color: Color(0xFFDFE7E2)),
-                _buildMetricsSidebar(route),
+                _buildMetricsSidebar(),
               ],
             );
           }
@@ -256,100 +286,353 @@ class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProvid
     );
   }
 
-  Widget _buildMapCanvas(RouteDetails route) {
+  Widget _buildMapArea() {
     return Stack(
       children: [
-        // Custom Styled Dynamic Map Canvas
-        Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _pulseCtrl,
-            builder: (context, _) {
-              return CustomPaint(
-                painter: _DynamicRouteMapPainter(
-                  route: route,
-                  zoom: _zoom,
-                  pulseValue: _pulseCtrl.value,
+        SizedBox(
+          height: 380,
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _mapCenter,
+              initialZoom: 6.0,
+              minZoom: 4.0,
+              maxZoom: 16.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.mandisync.app',
+                maxZoom: 19,
+                tileBuilder: _warmTileBuilder,
+              ),
+              if (_routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 10.0,
+                      color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                    ),
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 5.0,
+                      color: const Color(0xFF0B7A4B),
+                    ),
+                  ],
                 ),
-              );
-            },
+              if (_originCoord != null && _destCoord != null)
+                MarkerLayer(
+                  markers: [
+                    _buildMarker(
+                      LatLng(_originCoord!.lat, _originCoord!.lng),
+                      _originCoord!.displayName,
+                      const Color(0xFF0B7A4B),
+                      Icons.location_on,
+                    ),
+                    _buildMarker(
+                      LatLng(_destCoord!.lat, _destCoord!.lng),
+                      _destCoord!.displayName,
+                      const Color(0xFFEF4444),
+                      Icons.pin_drop,
+                    ),
+                  ],
+                ),
+              RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution(
+                    '© OpenStreetMap contributors',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
 
-        // Corridor badge on top left of map
-        Positioned(
-          top: 12,
-          left: 12,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFDFE7E2)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircleAvatar(radius: 4, backgroundColor: Color(0xFF10B981)),
-                const SizedBox(width: 6),
-                Text(
-                  "${route.origin.split(',')[0]} ➔ ${route.destination.split(',')[0]}",
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF123B2A)),
-                ),
-              ],
+        // Corridor badge
+        if (_routeDetails != null)
+          Positioned(
+            top: 12,
+            left: 12,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFDFE7E2)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircleAvatar(
+                      radius: 4, backgroundColor: Color(0xFF10B981)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${_routeDetails!.origin} \u279E ${_routeDetails!.destination}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      color: Color(0xFF123B2A),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+
+        // Warning banner
+        if (_errorMsg != null)
+          Positioned(
+            bottom: 8,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFCC02)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline,
+                      size: 14, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _errorMsg!,
+                      style: const TextStyle(
+                          fontSize: 10.5, color: Color(0xFF856404)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Loading overlay
+        if (_isLoading)
+          Positioned.fill(
+            child: Container(
+              color: Colors.white.withValues(alpha: 0.75),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(
+                        color: Color(0xFF0B7A4B), strokeWidth: 3),
+                    SizedBox(height: 10),
+                    Text(
+                      'Calculating optimal route\u2026',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF0B7A4B),
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+        // Zoom controls
+        Positioned(
+          right: 12,
+          bottom: 40,
+          child: _buildZoomControls(),
         ),
 
-        // Zoom Controls
+        // Recenter
         Positioned(
-          left: 14,
-          bottom: 14,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                InkWell(
-                  onTap: () => setState(() => _zoom = (_zoom + 0.15).clamp(0.8, 1.6)),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.add, size: 18, color: Color(0xFF123B2A)),
-                  ),
-                ),
-                Container(height: 1, width: 28, color: Colors.grey[200]),
-                InkWell(
-                  onTap: () => setState(() => _zoom = (_zoom - 0.15).clamp(0.8, 1.6)),
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(Icons.remove, size: 18, color: Color(0xFF123B2A)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          right: 12,
+          bottom: 110,
+          child: _buildRecenterButton(),
         ),
       ],
     );
   }
 
-  Widget _buildMetricsSidebar(RouteDetails route) {
+  Widget _buildZoomControls() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              final cam = _mapController.camera;
+              _mapController.move(
+                  cam.center, (cam.zoom + 1).clamp(4.0, 16.0));
+            },
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(8)),
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child: Icon(Icons.add, size: 18, color: Color(0xFF123B2A)),
+            ),
+          ),
+          Container(height: 1, width: 30, color: Colors.grey[200]),
+          InkWell(
+            onTap: () {
+              final cam = _mapController.camera;
+              _mapController.move(
+                  cam.center, (cam.zoom - 1).clamp(4.0, 16.0));
+            },
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(8)),
+            child: const Padding(
+              padding: EdgeInsets.all(8),
+              child:
+                  Icon(Icons.remove, size: 18, color: Color(0xFF123B2A)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecenterButton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          if (_routePoints.isNotEmpty) {
+            final bounds = LatLngBounds.fromPoints(_routePoints);
+            _mapController.fitCamera(
+              CameraFit.bounds(
+                  bounds: bounds, padding: const EdgeInsets.all(48)),
+            );
+          } else {
+            _mapController.move(_mapCenter, 6.0);
+          }
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: const Padding(
+          padding: EdgeInsets.all(8),
+          child:
+              Icon(Icons.my_location, size: 18, color: Color(0xFF0B7A4B)),
+        ),
+      ),
+    );
+  }
+
+  Marker _buildMarker(
+      LatLng point, String label, Color color, IconData icon) {
+    return Marker(
+      point: point,
+      width: 140,
+      height: 60,
+      alignment: Alignment.topCenter,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4),
+              ],
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: color),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(icon, color: color, size: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _warmTileBuilder(
+      BuildContext context, Widget tileWidget, TileImage tile) {
+    return ColorFiltered(
+      colorFilter: const ColorFilter.matrix([
+        0.95, 0, 0, 0, 0,
+        0, 0.97, 0, 0, 0,
+        0, 0, 0.92, 0, 0,
+        0, 0, 0, 1, 0,
+      ]),
+      child: tileWidget,
+    );
+  }
+
+  Widget _buildMetricsSidebar() {
+    if (_isLoading && _routeDetails == null) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(
+          child: CircularProgressIndicator(
+              color: Color(0xFF0B7A4B), strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (_routeDetails == null) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.map_outlined,
+                size: 48, color: Color(0xFFDFE7E2)),
+            const SizedBox(height: 12),
+            const Text(
+              'Enter origin and destination\nto see route details',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Supported: Ludhiana, Delhi, Nashik,\nMumbai, Indore, Ahmedabad, Jaipur,\nPune, Hyderabad, Bangalore\u2026',
+              textAlign: TextAlign.center,
+              style:
+                  TextStyle(color: Colors.grey[400], fontSize: 11),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final r = _routeDetails!;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(20),
@@ -357,43 +640,68 @@ class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProvid
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildSidebarMetric(
+          _buildMetricRow(
             icon: Icons.alt_route,
             iconColor: const Color(0xFF0B7A4B),
-            title: "Optimized Route",
-            value: "${route.distanceKm.toInt()} km",
-            subtext: "(Total Distance)",
+            title: 'Optimized Route',
+            value: '${r.distanceKm.toStringAsFixed(0)} km',
+            subtext: 'OSRM road distance',
           ),
           const SizedBox(height: 16),
-          _buildSidebarMetric(
+          _buildMetricRow(
             icon: Icons.groups,
             iconColor: const Color(0xFF0284C7),
-            title: "Shared Transport",
-            value: route.sharedFarmers,
-            subtext: "Load Consolidation",
+            title: 'Shared Transport',
+            value: r.sharedFarmers,
+            subtext: 'Load Consolidation',
           ),
           const SizedBox(height: 16),
-          _buildSidebarMetric(
+          _buildMetricRow(
             icon: Icons.schedule,
             iconColor: const Color(0xFFF59E0B),
-            title: "Estimated Time",
-            value: route.estimatedHours,
-            subtext: "Direct Highway Transit",
+            title: 'Estimated Time',
+            value: r.estimatedHours,
+            subtext: 'Highway transit',
           ),
           const SizedBox(height: 16),
-          _buildSidebarMetric(
+          _buildMetricRow(
             icon: Icons.eco,
             iconColor: const Color(0xFF10B981),
-            title: "CO₂ Saved",
-            value: "${route.co2SavedPct}%",
-            subtext: "(vs. individual trips)",
+            title: 'CO\u2082 Saved',
+            value: '${r.co2SavedPct}%',
+            subtext: 'vs. individual trips',
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F7F5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFDFE7E2)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined,
+                    size: 13, color: Color(0xFF64748B)),
+                SizedBox(width: 6),
+                Text(
+                  'Powered by OpenStreetMap + OSRM',
+                  style: TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSidebarMetric({
+  Widget _buildMetricRow({
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -413,185 +721,24 @@ class _RouteMapWidgetState extends State<RouteMapWidget> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600)),
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600)),
               const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF123B2A))),
-              Text(subtext, style: TextStyle(fontSize: 10.5, color: Colors.grey[500])),
+              Text(value,
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF123B2A))),
+              Text(subtext,
+                  style:
+                      TextStyle(fontSize: 10.5, color: Colors.grey[500])),
             ],
           ),
         ),
       ],
     );
-  }
-}
-
-class _DynamicRouteMapPainter extends CustomPainter {
-  final RouteDetails route;
-  final double zoom;
-  final double pulseValue;
-
-  _DynamicRouteMapPainter({
-    required this.route,
-    required this.zoom,
-    required this.pulseValue,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // 1. Background map terrain
-    final bgPaint = Paint()..color = const Color(0xFFF4F7F2);
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
-
-    // 2. Geography / River curve
-    final riverPaint = Paint()
-      ..color = const Color(0xFFE1EFF5)
-      ..strokeWidth = 12
-      ..style = PaintingStyle.stroke;
-
-    final riverPath = Path()
-      ..moveTo(size.width * 0.05, size.height * 0.1)
-      ..quadraticBezierTo(size.width * 0.4, size.height * 0.35, size.width * 0.15, size.height * 0.95);
-    canvas.drawPath(riverPath, riverPaint);
-
-    // 3. Grid road network
-    final secRoadPaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(Offset(0, size.height * 0.35), Offset(size.width, size.height * 0.3), secRoadPaint);
-    canvas.drawLine(Offset(0, size.height * 0.7), Offset(size.width, size.height * 0.65), secRoadPaint);
-    canvas.drawLine(Offset(size.width * 0.3, 0), Offset(size.width * 0.35, size.height), secRoadPaint);
-    canvas.drawLine(Offset(size.width * 0.7, 0), Offset(size.width * 0.75, size.height), secRoadPaint);
-
-    // 4. Compute Dynamic Positions based on RouteDetails
-    final pStart = Offset(size.width * route.startX, size.height * route.startY);
-    final pEnd = Offset(size.width * route.endX, size.height * route.endY);
-
-    final points = <Offset>[pStart];
-    for (final wp in route.waypoints) {
-      points.add(Offset(size.width * wp.x, size.height * wp.y));
-    }
-    points.add(pEnd);
-
-    // 5. Build Smooth Highway Route Path
-    final routePath = Path();
-    routePath.moveTo(points[0].dx, points[0].dy);
-
-    for (int i = 1; i < points.length; i++) {
-      final prev = points[i - 1];
-      final curr = points[i];
-      final midX = (prev.dx + curr.dx) / 2;
-      final midY = (prev.dy + curr.dy) / 2;
-      routePath.quadraticBezierTo(prev.dx, prev.dy, midX, midY);
-      routePath.lineTo(curr.dx, curr.dy);
-    }
-
-    // 6. Draw Route Glow
-    final glowPaint = Paint()
-      ..color = const Color(0xFF10B981).withValues(alpha: 0.25)
-      ..strokeWidth = 9
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(routePath, glowPaint);
-
-    // 7. Draw Core Highway Line (Dark Green)
-    final routePaint = Paint()
-      ..color = const Color(0xFF0B7A4B)
-      ..strokeWidth = 4.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(routePath, routePaint);
-
-    // 8. Draw Intermediate Waypoints
-    for (int i = 0; i < route.waypoints.length; i++) {
-      final wp = route.waypoints[i];
-      final pos = Offset(size.width * wp.x, size.height * wp.y);
-      _drawWaypointPin(canvas, pos, wp.name);
-    }
-
-    // 9. Draw Origin Pin (Green Pulse)
-    final originName = route.origin.split(',')[0];
-    _drawEndpointPin(
-      canvas,
-      pStart,
-      originName,
-      const Color(0xFF0B7A4B),
-      isOrigin: true,
-      pulse: pulseValue,
-    );
-
-    // 10. Draw Destination Pin (Red Pulse)
-    final destName = route.destination.split(',')[0];
-    _drawEndpointPin(
-      canvas,
-      pEnd,
-      destName,
-      const Color(0xFFEF4444),
-      isOrigin: false,
-      pulse: pulseValue,
-    );
-  }
-
-  void _drawWaypointPin(Canvas canvas, Offset pos, String name) {
-    canvas.drawCircle(pos, 5, Paint()..color = Colors.white);
-    canvas.drawCircle(pos, 4, Paint()..color = const Color(0xFF075B38));
-
-    final span = TextSpan(
-      text: name,
-      style: const TextStyle(color: Color(0xFF374151), fontSize: 10, fontWeight: FontWeight.w700),
-    );
-    final tp = TextPainter(text: span, textDirection: TextDirection.ltr);
-    tp.layout();
-    tp.paint(canvas, Offset(pos.dx + 8, pos.dy - 6));
-  }
-
-  void _drawEndpointPin(
-    Canvas canvas,
-    Offset pos,
-    String name,
-    Color color, {
-    required bool isOrigin,
-    required double pulse,
-  }) {
-    // Pulse animation ring
-    final pulseRadius = 8 + (pulse * 7);
-    canvas.drawCircle(
-      pos,
-      pulseRadius,
-      Paint()..color = color.withValues(alpha: (1.0 - pulse) * 0.4),
-    );
-
-    // Center pin
-    canvas.drawCircle(pos, 7, Paint()..color = Colors.white);
-    canvas.drawCircle(pos, 5, Paint()..color = color);
-
-    // Label banner
-    final span = TextSpan(
-      text: name,
-      style: const TextStyle(
-        color: Color(0xFF123B2A),
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-    final tp = TextPainter(text: span, textDirection: TextDirection.ltr);
-    tp.layout();
-
-    final labelOffset = Offset(pos.dx + 12, pos.dy - 9);
-    final bgRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(labelOffset.dx - 4, labelOffset.dy - 2, tp.width + 8, tp.height + 4),
-      const Radius.circular(5),
-    );
-    canvas.drawRRect(bgRect, Paint()..color = Colors.white);
-    canvas.drawRRect(bgRect, Paint()..color = const Color(0xFFDFE7E2)..style = PaintingStyle.stroke);
-    tp.paint(canvas, labelOffset);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DynamicRouteMapPainter oldDelegate) {
-    return oldDelegate.route != route || oldDelegate.zoom != zoom || oldDelegate.pulseValue != pulseValue;
   }
 }
