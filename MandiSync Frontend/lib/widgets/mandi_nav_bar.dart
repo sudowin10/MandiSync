@@ -182,9 +182,9 @@ class _MandiNavBarState extends State<MandiNavBar> {
       children: [
         // 1. TOP GOVERNMENT HEADER BAR
         Container(
-          color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           decoration: const BoxDecoration(
+            color: Colors.white,
             border: Border(bottom: BorderSide(color: Color(0xFFE5ECE8), width: 1)),
           ),
           child: Row(
@@ -386,9 +386,9 @@ class _MandiNavBarState extends State<MandiNavBar> {
 
         // 2. MANDISYNC BRAND & NAVIGATION BAR
         Container(
-          color: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
           decoration: const BoxDecoration(
+            color: Colors.white,
             border: Border(bottom: BorderSide(color: Color(0xFFDFE7E2), width: 1)),
           ),
           child: Row(
