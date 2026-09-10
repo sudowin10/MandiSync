@@ -70,29 +70,45 @@ app.include_router(logistics_router, prefix=settings.API_V1_STR)
 app.include_router(routes_mock.router)
 
 from pathlib import Path
+from fastapi import Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
+FLUTTER_DIR = Path(__file__).resolve().parent / "flutter_web"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# Mount compiled Flutter Web Application
+if FLUTTER_DIR.exists():
+    app.mount("/app", StaticFiles(directory=str(FLUTTER_DIR), html=True), name="flutter_app")
+    app.mount("/flutter", StaticFiles(directory=str(FLUTTER_DIR), html=True), name="flutter")
+
+# Mount legacy prototype static assets
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    @app.get("/app", include_in_schema=False)
-    @app.get("/dashboard", include_in_schema=False)
-    async def serve_dashboard():
+    @app.get("/prototype", include_in_schema=False)
+    @app.get("/dashboard-legacy", include_in_schema=False)
+    async def serve_legacy_dashboard():
         return FileResponse(STATIC_DIR / "index.html")
+
+@app.get("/dashboard", include_in_schema=False)
+async def serve_dashboard():
+    return RedirectResponse(url="/app/")
 
 
 @app.get("/", tags=["Health Check"])
-
-async def root():
+async def root(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and FLUTTER_DIR.exists():
+        return RedirectResponse(url="/app/")
     return {
         "service": settings.PROJECT_NAME,
         "status": "online",
         "version": settings.VERSION,
         "database_connected": db_manager.is_connected,
         "ml_model_loaded": ml_runner.is_ready,
-        "documentation": "/docs"
+        "documentation": "/docs",
+        "web_app": "/app/"
     }
 
 

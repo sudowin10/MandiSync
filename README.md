@@ -8,11 +8,12 @@
 
 ```
 MandiSync_SIH26/
-├── backend_api/        # FastAPI (27 REST API endpoints)
+├── backend_api/        # FastAPI (27 REST API endpoints + Flutter Web hosting)
 ├── ml_engine/          # XGBoost Time-Series Price Predictor
+├── MandiSync Frontend/ # Full Flutter Web & Mobile Application (Anshul)
 ├── tests/              # 42 Automated test cases (all passing)
-├── flutter_sdk/        # Dart models + API services for Flutter UI
-├── Dockerfile          # Docker container for backend
+├── flutter_sdk/        # Shared Dart models + API service definitions
+├── Dockerfile          # Production Docker container
 ├── docker-compose.yml  # Full stack launcher
 └── .github/workflows/  # Automated CI pipeline
 ```
