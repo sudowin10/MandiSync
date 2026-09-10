@@ -33,16 +33,18 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
   final ApiService _api = ApiService();
 
   // Login Controllers
-  final _loginUsernameCtrl = TextEditingController(text: "farmer_user");
-  final _loginPasswordCtrl = TextEditingController(text: "password123");
+  final _loginUsernameCtrl = TextEditingController();
+  final _loginPasswordCtrl = TextEditingController();
+  bool _loginObscure = true;
   bool _isLoggingIn = false;
   String? _loginError;
 
   // Register Controllers
-  final _regNameCtrl = TextEditingController(text: "Ramesh Patil");
-  final _regUsernameCtrl = TextEditingController(text: "ramesh_patil");
-  final _regEmailCtrl = TextEditingController(text: "ramesh.patil@kisan.gov.in");
-  final _regPasswordCtrl = TextEditingController(text: "password123");
+  final _regNameCtrl = TextEditingController();
+  final _regUsernameCtrl = TextEditingController();
+  final _regEmailCtrl = TextEditingController();
+  final _regPasswordCtrl = TextEditingController();
+  bool _regObscure = true;
   String _selectedRole = "Farmer";
   bool _isRegistering = false;
   String? _regError;
@@ -74,7 +76,7 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
     final password = _loginPasswordCtrl.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      setState(() => _loginError = "Username and password are required.");
+      setState(() => _loginError = "Please enter both username and password.");
       return;
     }
 
@@ -243,6 +245,7 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
           controller: _loginUsernameCtrl,
           decoration: const InputDecoration(
             labelText: "Username",
+            hintText: "Enter your username",
             prefixIcon: Icon(Icons.person_outline),
           ),
         ),
@@ -250,24 +253,59 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
 
         TextField(
           controller: _loginPasswordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(
+          obscureText: _loginObscure,
+          decoration: InputDecoration(
             labelText: "Password",
-            prefixIcon: Icon(Icons.lock_outline),
+            hintText: "Enter your password",
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_loginObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+              onPressed: () => setState(() => _loginObscure = !_loginObscure),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
 
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEAF7F0),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            "💡 Demo Tip: Pre-filled credentials (farmer_user / password123) are ready to use.",
-            style: TextStyle(color: Color(0xFF075B38), fontSize: 11),
-          ),
+        // Quick Demo Prefill Options
+        Row(
+          children: [
+            const Text(
+              "Demo Quick-Fill:",
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(width: 8),
+            ActionChip(
+              avatar: const Icon(Icons.agriculture, size: 14, color: Color(0xFF0B7A4B)),
+              label: const Text("Farmer", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0B7A4B))),
+              backgroundColor: const Color(0xFFEAF7F0),
+              side: const BorderSide(color: Color(0xFFC7EBD7)),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                setState(() {
+                  _loginUsernameCtrl.text = "farmer_user";
+                  _loginPasswordCtrl.text = "password123";
+                  _loginError = null;
+                });
+              },
+            ),
+            const SizedBox(width: 6),
+            ActionChip(
+              avatar: const Icon(Icons.storefront_outlined, size: 14, color: Color(0xFF0284C7)),
+              label: const Text("Buyer", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0284C7))),
+              backgroundColor: const Color(0xFFF0F9FF),
+              side: const BorderSide(color: Color(0xFFBAE6FD)),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                setState(() {
+                  _loginUsernameCtrl.text = "buyer_user";
+                  _loginPasswordCtrl.text = "password123";
+                  _loginError = null;
+                });
+              },
+            ),
+          ],
         ),
 
         const SizedBox(height: 20),
@@ -302,14 +340,44 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Join the MandiSync Network",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF123B2A)),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          "Direct access to APMC mandi rates, AI forecasting, and ONDC trade.",
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Join the MandiSync Network",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF123B2A)),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    "Direct access to APMC mandi rates, AI forecasting, and ONDC trade.",
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.flash_on, size: 13, color: Color(0xFF0B7A4B)),
+              label: const Text("Demo Data", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0B7A4B))),
+              backgroundColor: const Color(0xFFEAF7F0),
+              side: const BorderSide(color: Color(0xFFC7EBD7)),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                setState(() {
+                  _regNameCtrl.text = "Ramesh Patil";
+                  _regUsernameCtrl.text = "ramesh_patil";
+                  _regEmailCtrl.text = "ramesh.patil@kisan.gov.in";
+                  _regPasswordCtrl.text = "password123";
+                  _selectedRole = "Farmer";
+                  _regError = null;
+                });
+              },
+            ),
+          ],
         ),
         const SizedBox(height: 16),
 
@@ -330,7 +398,11 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
 
         TextField(
           controller: _regNameCtrl,
-          decoration: const InputDecoration(labelText: "Full Name", prefixIcon: Icon(Icons.badge_outlined)),
+          decoration: const InputDecoration(
+            labelText: "Full Name",
+            hintText: "e.g. Ramesh Patil",
+            prefixIcon: Icon(Icons.badge_outlined),
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -339,7 +411,11 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
             Expanded(
               child: TextField(
                 controller: _regUsernameCtrl,
-                decoration: const InputDecoration(labelText: "Username", prefixIcon: Icon(Icons.person_outline)),
+                decoration: const InputDecoration(
+                  labelText: "Username",
+                  hintText: "e.g. ramesh_patil",
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -359,14 +435,26 @@ class _AuthModalState extends State<AuthModal> with SingleTickerProviderStateMix
 
         TextField(
           controller: _regEmailCtrl,
-          decoration: const InputDecoration(labelText: "Email Address", prefixIcon: Icon(Icons.email_outlined)),
+          decoration: const InputDecoration(
+            labelText: "Email Address",
+            hintText: "e.g. ramesh@kisan.gov.in",
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
         ),
         const SizedBox(height: 12),
 
         TextField(
           controller: _regPasswordCtrl,
-          obscureText: true,
-          decoration: const InputDecoration(labelText: "Create Password", prefixIcon: Icon(Icons.lock_outline)),
+          obscureText: _regObscure,
+          decoration: InputDecoration(
+            labelText: "Create Password",
+            hintText: "Enter a secure password",
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(_regObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+              onPressed: () => setState(() => _regObscure = !_regObscure),
+            ),
+          ),
         ),
         const SizedBox(height: 20),
 
