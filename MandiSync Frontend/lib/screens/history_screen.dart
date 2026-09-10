@@ -1,10 +1,10 @@
+// =========================================================
+// MANDISYNC FLUTTER — HISTORY SCREEN
+// =========================================================
+
 import 'package:flutter/material.dart';
-import '../constants/app_theme.dart';
-import '../models/stats_models.dart';
-import '../services/stats_service.dart';
-import '../widgets/gov_bar.dart';
-import '../widgets/mandi_app_bar.dart';
-import '../widgets/app_nav_drawer.dart';
+import '../models/models.dart';
+import '../services/api_service.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -14,8 +14,8 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final StatsService _statsService = StatsService();
-  List<HistoryLog> _logs = [];
+  final ApiService _api = ApiService();
+  List<HistoryItemModel> _history = [];
   bool _isLoading = true;
 
   @override
@@ -26,10 +26,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final data = await _statsService.fetchHistory();
+    final list = await _api.getHistory();
     if (mounted) {
       setState(() {
-        _logs = data;
+        _history = list;
         _isLoading = false;
       });
     }
@@ -38,87 +38,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const MandiAppBar(title: 'Activity History'),
-      drawer: const AppNavDrawer(activeRoute: '/history'),
-      body: Column(
-        children: [
-          const GovBar(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _loadHistory,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _logs.length,
-                      itemBuilder: (ctx, i) {
-                        final log = _logs[i];
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.subtleGreen,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.history, color: AppTheme.primaryDark, size: 20),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              log.action,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkSlate),
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.backgroundLight,
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              log.category,
-                                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: AppTheme.textMuted),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        log.details,
-                                        style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        log.timestamp,
-                                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textMuted),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+      appBar: AppBar(title: const Text("Activity & Audit History")),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadHistory,
+              child: ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: _history.length,
+                itemBuilder: (context, i) {
+                  final h = _history[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFF0F9FF),
+                        child: Icon(Icons.history, color: Color(0xFF0284C7)),
+                      ),
+                      title: Text(h.eventType, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text("${h.details}\nModule: ${h.module}"),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7F0),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          h.status,
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF075B38)),
+                        ),
+                      ),
                     ),
-                  ),
-          ),
-        ],
-      ),
+                  );
+                },
+              ),
+            ),
     );
   }
 }

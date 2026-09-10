@@ -1,390 +1,623 @@
+// =========================================================
+// MANDISYNC FLUTTER — HOME SCREEN
+// Matches Reference Image Screen 1 Exactly
+// =========================================================
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../constants/app_theme.dart';
-import '../models/market_price_model.dart';
-import '../providers/market_provider.dart';
-import '../providers/crop_provider.dart';
-import '../widgets/gov_bar.dart';
-import '../widgets/mandi_app_bar.dart';
-import '../widgets/app_nav_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Function(int) onNavigate;
+  const HomeScreen({super.key, required this.onNavigate});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MarketProvider>().fetchPrices();
-      context.read<CropProvider>().fetchAll();
-    });
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    final marketProv = context.watch<MarketProvider>();
-    final prices = marketProv.prices;
+    final width = MediaQuery.of(context).size.width;
+    final isDesktop = width >= 800;
 
-    return Scaffold(
-      appBar: const MandiAppBar(),
-      drawer: const AppNavDrawer(activeRoute: '/'),
-      body: Column(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const GovBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // HERO SECTION
-                  _buildHeroSection(context, prices),
-
-                  // CORE CAPABILITIES
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Comprehensive Agriculture Intelligence',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkSlate,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Designed for farmers, traders, FPOs, and APMC market administrators.',
-                          style: TextStyle(fontSize: 14, color: AppTheme.textMuted),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // FEATURE CARDS
-                        _buildFeatureCard(
-                          context,
-                          icon: '₹',
-                          title: 'Live Agmarknet Prices',
-                          desc: 'Track real-time APMC market arrivals, minimum, maximum, and modal prices across India.',
-                          route: '/markets',
-                          color: AppTheme.primaryGreen,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildFeatureCard(
-                          context,
-                          icon: '🤖',
-                          title: 'XGBoost AI Forecast',
-                          desc: 'Predict peak crop prices and optimal listing values with time-series machine learning.',
-                          route: '/analytics',
-                          color: AppTheme.infoBlue,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildFeatureCard(
-                          context,
-                          icon: '🚚',
-                          title: 'Smart Backhaul Logistics',
-                          desc: 'Connect with returning-empty transport trucks for automated 20–40% freight discounts.',
-                          route: '/logistics',
-                          color: AppTheme.saffron,
-                        ),
-                        const SizedBox(height: 14),
-                        _buildFeatureCard(
-                          context,
-                          icon: '🌾',
-                          title: 'ONDC Beckn Marketplace',
-                          desc: 'Direct harvest listings compliant with open commerce protocol for verified nationwide buyers.',
-                          route: '/crop-listing',
-                          color: const Color(0xFF059669),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // CALL TO ACTION FOOTER
-                  Container(
-                    margin: const EdgeInsets.all(20),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primaryDark, AppTheme.primaryGreen],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+          // 1. HERO SECTION
+          Container(
+            color: const Color(0xFFF6F9F7),
+            padding: EdgeInsets.symmetric(horizontal: isDesktop ? 48 : 20, vertical: 36),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1150),
+                child: isDesktop
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(flex: 3, child: _buildHeroText()),
+                          const SizedBox(width: 36),
+                          Expanded(flex: 2, child: _buildHeroGraphic()),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeroText(),
+                          const SizedBox(height: 24),
+                          _buildHeroGraphic(),
+                        ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Ready to Sell Your Harvest at Best Rates?',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'List your crops on the national network and access AI price guidance immediately.',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppTheme.primaryDark,
-                          ),
-                          onPressed: () => Navigator.pushNamed(context, '/crop-listing'),
-                          child: const Text('List Produce Now →'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ),
+          ),
+
+          // 2. MAIN CONTENT WRAPPER
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1150),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: isDesktop ? 48 : 20, vertical: 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 4 Feature Cards Grid
+                    _buildFeatureCardsGrid(isDesktop),
+
+                    const SizedBox(height: 36),
+
+                    // Key Statistics
+                    _buildKeyStatisticsHeader(),
+                    const SizedBox(height: 14),
+                    _buildKeyStatisticsCards(isDesktop),
+
+                    const SizedBox(height: 36),
+
+                    // Recent Market Prices Table
+                    _buildRecentPricesHeader(),
+                    const SizedBox(height: 14),
+                    _buildRecentPricesTable(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 48),
+
+          // 3. DARK NAVY GOVERNMENT FOOTER
+          _buildFooter(isDesktop),
+        ],
+      ),
+    );
+  }
+
+  // --- HERO COMPONENTS ---
+  Widget _buildHeroText() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Connecting Farmers\nto a Stronger Market",
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF123B2A),
+            height: 1.18,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          "An open, digital marketplace powered by ONDC,\nAI and data — for better prices, fair trade and\nsustainable agriculture.",
+          style: TextStyle(
+            fontSize: 14.5,
+            color: Colors.grey[700],
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 22),
+        ElevatedButton(
+          onPressed: () => widget.onNavigate(1), // Markets tab
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0B7A4B),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 0,
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Explore Markets", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5)),
+              SizedBox(width: 8),
+              Icon(Icons.arrow_forward, size: 16),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroGraphic() {
+    return Container(
+      height: 220,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF86EFAC), Color(0xFF16A34A), Color(0xFF047857)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF16A34A).withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Background lush agricultural pattern
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Opacity(
+                opacity: 0.15,
+                child: CustomPaint(painter: _FieldPatternPainter()),
+              ),
+            ),
+          ),
+
+          // Central Visual representation
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.phone_android, size: 44, color: Color(0xFF0B7A4B)),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    "🌾 MandiSync AgTech Engine",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF123B2A)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Floating Badges from Reference
+          Positioned(
+            top: 18,
+            left: 20,
+            child: _buildFloatingBadge("🌿", "Agmarknet"),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: _buildFloatingBadge("📈", "AI Forecast"),
+          ),
+          Positioned(
+            bottom: 20,
+            right: 30,
+            child: _buildFloatingBadge("🚚", "Logistics"),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeroSection(BuildContext context, List<MarketPriceModel> prices) {
+  Widget _buildFloatingBadge(String emoji, String text) {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 5),
+          Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF123B2A))),
+        ],
+      ),
+    );
+  }
+
+  // --- 4 FEATURE CARDS GRID ---
+  Widget _buildFeatureCardsGrid(bool isDesktop) {
+    final cards = [
+      _buildFeatureCard(
+        icon: Icons.storefront_outlined,
+        iconColor: const Color(0xFF0B7A4B),
+        title: "Live Mandi Prices",
+        desc: "Real-time market\nrates across India",
+        onTap: () => widget.onNavigate(1),
+      ),
+      _buildFeatureCard(
+        icon: Icons.trending_up,
+        iconColor: const Color(0xFF0284C7),
+        title: "AI Price Forecast",
+        desc: "Predicts price trends\n(7 days ahead)",
+        onTap: () => widget.onNavigate(3),
+      ),
+      _buildFeatureCard(
+        icon: Icons.local_shipping_outlined,
+        iconColor: const Color(0xFF10B981),
+        title: "Smart Logistics",
+        desc: "Optimized shared\ntransport routes",
+        onTap: () => widget.onNavigate(4),
+      ),
+      _buildFeatureCard(
+        icon: Icons.handshake_outlined,
+        iconColor: const Color(0xFF0B7A4B),
+        title: "Reverse Auction",
+        desc: "Bulk buyers to\nfarmers directly",
+        onTap: () => widget.onNavigate(2),
+      ),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: c))).toList(),
+      );
+    } else {
+      return Column(
+        children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 10), child: c)).toList(),
+      );
+    }
+  }
+
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String desc,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDFE7E2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: iconColor.withValues(alpha: 0.1),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF123B2A))),
+            const SizedBox(height: 4),
+            Text(desc, style: TextStyle(color: Colors.grey[600], fontSize: 11.5, height: 1.3)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- KEY STATISTICS ---
+  Widget _buildKeyStatisticsHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Key Statistics",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF123B2A)),
+        ),
+        InkWell(
+          onTap: () => widget.onNavigate(1),
+          child: const Row(
+            children: [
+              Text("View Detailed Report", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0B7A4B))),
+              SizedBox(width: 4),
+              Icon(Icons.arrow_forward, size: 14, color: Color(0xFF0B7A4B)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeyStatisticsCards(bool isDesktop) {
+    final stats = [
+      _buildStatBox("12,480+", "Registered Farmers & FPOs", Icons.domain, const Color(0xFF0B7A4B)),
+      _buildStatBox("320+", "Active Buyers", Icons.inventory_2_outlined, const Color(0xFF0284C7)),
+      _buildStatBox("1,250+", "MT Trade Volume (Today)", Icons.water_drop_outlined, const Color(0xFF0284C7)),
+      _buildStatBox("18%", "Avg. Price Improvement", Icons.pie_chart_outline, const Color(0xFF10B981)),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: stats.map((s) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: s))).toList(),
+      );
+    } else {
+      return Column(
+        children: stats.map((s) => Padding(padding: const EdgeInsets.only(bottom: 10), child: s)).toList(),
+      );
+    }
+  }
+
+  Widget _buildStatBox(String value, String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDFE7E2)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppTheme.subtleGreen,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.borderGreen),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('✨', style: TextStyle(fontSize: 12)),
-                SizedBox(width: 6),
-                Text(
-                  'AI-Powered Agmarknet & ONDC Network',
-                  style: TextStyle(
-                    color: AppTheme.primaryDark,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Connecting Farmers to a Stronger Market',
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              color: AppTheme.darkSlate,
-              letterSpacing: -0.5,
-              height: 1.25,
-            ),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: color.withValues(alpha: 0.1),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Discover real-time APMC mandi prices, run XGBoost AI price forecasts, list crops directly on ONDC Beckn, and save 20–40% on freight with smart return backhauls.',
-            style: TextStyle(
-              fontSize: 14.5,
-              color: AppTheme.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // QUICK ACTION BUTTONS
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              ElevatedButton(
-                onPressed: () => Navigator.pushNamed(context, '/markets'),
-                child: const Text('Explore Mandi Prices →'),
-              ),
-              OutlinedButton(
-                onPressed: () => Navigator.pushNamed(context, '/analytics'),
-                child: const Text('AI Price Forecast'),
-              ),
-              OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.darkSlate,
-                  side: const BorderSide(color: AppTheme.borderSubtle),
-                ),
-                onPressed: () => Navigator.pushNamed(context, '/crop-listing'),
-                child: const Text('List Your Crop'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // LIVE SNAPSHOT PREVIEW CARD
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: AppTheme.backgroundLight,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.borderSubtle),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Live Market Snapshot',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.darkSlate,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.subtleGreen,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'APMC Feed',
-                        style: TextStyle(
-                          color: AppTheme.primaryDark,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Agmarknet Daily APMC Market Arrivals',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                ),
-                const Divider(height: 24),
-                if (prices.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else
-                  ...prices.take(3).map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.cropName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppTheme.darkSlate,
-                                  ),
-                                ),
-                                Text(
-                                  '${item.market} · ${item.state}',
-                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              '₹${item.modalPrice.toInt()} / Qtl',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                color: AppTheme.primaryDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-              ],
-            ),
-          ),
+          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureCard(
-    BuildContext context, {
-    required String icon,
-    required String title,
-    required String desc,
-    required String route,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: () => Navigator.pushNamed(context, route),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.borderSubtle),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+  // --- RECENT MARKET PRICES TABLE ---
+  Widget _buildRecentPricesHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          "Recent Market Prices",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF123B2A)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(icon, style: const TextStyle(fontSize: 22)),
+        InkWell(
+          onTap: () => widget.onNavigate(1),
+          child: const Row(
+            children: [
+              Text("View All", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF0B7A4B))),
+              SizedBox(width: 4),
+              Icon(Icons.arrow_forward, size: 14, color: Color(0xFF0B7A4B)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentPricesTable() {
+    // Default matching reference picture exactly:
+    // Wheat: 2,350 | +2.4% | green
+    // Paddy: 2,180 | +1.8% | green
+    // Tomato: 1,200 | -3.2% | red
+    // Onion: 1,560 | +0.6% | green
+    // Potato: 1,320 | -1.1% | red
+    final rows = [
+      {"icon": "🌾", "name": "Wheat", "price": "2,350", "change": "+2.4%", "isUp": true},
+      {"icon": "🌱", "name": "Paddy", "price": "2,180", "change": "+1.8%", "isUp": true},
+      {"icon": "🍅", "name": "Tomato", "price": "1,200", "change": "-3.2%", "isUp": false},
+      {"icon": "🧅", "name": "Onion", "price": "1,560", "change": "+0.6%", "isUp": true},
+      {"icon": "🥔", "name": "Potato", "price": "1,320", "change": "-1.1%", "isUp": false},
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDFE7E2)),
+      ),
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: Color(0xFFDFE7E2))),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              children: [
+                const Expanded(flex: 3, child: Text("Commodity", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+                const Expanded(flex: 3, child: Text("Current Price (₹/Quintal)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+                const Expanded(flex: 2, child: Text("Change (24h)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)))),
+                const Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text("Trend", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))))),
+              ],
+            ),
+          ),
+
+          // Table Rows
+          ...rows.map((r) {
+            final isUp = r['isUp'] as bool;
+            final color = isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFFF1F5F3))),
+              ),
+              child: Row(
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.darkSlate,
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        Text(r['icon'] as String, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 8),
+                        Text(r['name'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Color(0xFF123B2A))),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    desc,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      r['price'] as String,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: Color(0xFF123B2A)),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      r['change'] as String,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: 55,
+                        height: 20,
+                        child: CustomPaint(painter: _SparklinePainter(isUp: isUp)),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            const Icon(Icons.chevron_right, color: AppTheme.textMuted),
-          ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // --- DARK GOVERNMENT FOOTER ---
+  Widget _buildFooter(bool isDesktop) {
+    return Container(
+      color: const Color(0xFF102837), // Dark navy government footer
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1150),
+          child: isDesktop
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildFooterLeft(),
+                    _buildFooterRight(),
+                  ],
+                )
+              : Column(
+                  children: [
+                    _buildFooterLeft(),
+                    const SizedBox(height: 16),
+                    _buildFooterRight(),
+                  ],
+                ),
         ),
       ),
     );
   }
+
+  Widget _buildFooterLeft() {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text("🏛️", style: TextStyle(fontSize: 20)),
+        SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Government of India", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12.5)),
+            Text("Ministry of Agriculture & Farmers Welfare", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 10.5)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooterRight() {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text("Privacy Policy", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+        Text("   |   ", style: TextStyle(color: Color(0xFF475569))),
+        Text("Terms of Service", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+        Text("   |   ", style: TextStyle(color: Color(0xFF475569))),
+        Text("Contact Us", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+      ],
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final bool isUp;
+  _SparklinePainter({required this.isUp});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    if (isUp) {
+      path.moveTo(0, size.height * 0.75);
+      path.quadraticBezierTo(size.width * 0.35, size.height * 0.8, size.width * 0.5, size.height * 0.45);
+      path.quadraticBezierTo(size.width * 0.75, size.height * 0.6, size.width, size.height * 0.2);
+    } else {
+      path.moveTo(0, size.height * 0.2);
+      path.quadraticBezierTo(size.width * 0.35, size.height * 0.3, size.width * 0.5, size.height * 0.6);
+      path.quadraticBezierTo(size.width * 0.75, size.height * 0.5, size.width, size.height * 0.85);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => oldDelegate.isUp != isUp;
+}
+
+class _FieldPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    for (double i = -size.width; i < size.width * 2; i += 30) {
+      canvas.drawLine(Offset(i, 0), Offset(i + size.height, size.height), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FieldPatternPainter oldDelegate) => false;
 }

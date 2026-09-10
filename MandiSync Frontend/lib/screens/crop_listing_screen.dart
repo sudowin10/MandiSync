@@ -1,10 +1,11 @@
+// =========================================================
+// MANDISYNC FLUTTER — CROP LISTING SCREEN (SELL CROPS)
+// =========================================================
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../constants/app_theme.dart';
-import '../providers/crop_provider.dart';
-import '../widgets/gov_bar.dart';
-import '../widgets/mandi_app_bar.dart';
-import '../widgets/app_nav_drawer.dart';
+import 'package:intl/intl.dart';
+import '../models/models.dart';
+import '../services/api_service.dart';
 
 class CropListingScreen extends StatefulWidget {
   const CropListingScreen({super.key});
@@ -13,333 +14,419 @@ class CropListingScreen extends StatefulWidget {
   State<CropListingScreen> createState() => _CropListingScreenState();
 }
 
-class _CropListingScreenState extends State<CropListingScreen> {
-  final _formKey = GlobalKey<FormState>();
+class _CropListingScreenState extends State<CropListingScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final ApiService _api = ApiService();
 
-  final _cropNameCtrl = TextEditingController();
+  // Form Controllers
+  final _formKey = GlobalKey<FormState>();
+  final _cropCtrl = TextEditingController();
   final _varietyCtrl = TextEditingController();
   final _quantityCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
+  final _districtCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
+  final _farmerCtrl = TextEditingController();
 
-  String _category = 'Vegetables';
-  String _unit = 'Quintal';
-  bool _isOrganic = false;
+  String _category = "Vegetables";
+  String _unit = "quintal";
+  final String _status = "active";
+
   bool _isSubmitting = false;
+  CropListingModel? _lastCreated;
+
+  // Active Listings State
+  List<CropListingModel> _myListings = [];
+  bool _isLoadingListings = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    final user = _api.currentUser;
+    if (user != null) {
+      _farmerCtrl.text = user.fullName;
+    }
+    _loadMyListings();
+  }
 
   @override
   void dispose() {
-    _cropNameCtrl.dispose();
+    _tabController.dispose();
+    _cropCtrl.dispose();
     _varietyCtrl.dispose();
     _quantityCtrl.dispose();
     _priceCtrl.dispose();
     _locationCtrl.dispose();
+    _districtCtrl.dispose();
     _stateCtrl.dispose();
-    _phoneCtrl.dispose();
-    _descCtrl.dispose();
+    _farmerCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSubmit() async {
+  Future<void> _loadMyListings() async {
+    setState(() => _isLoadingListings = true);
+    try {
+      final list = await _api.getCrops();
+      if (mounted) {
+        setState(() {
+          _myListings = list;
+          _isLoadingListings = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingListings = false);
+    }
+  }
+
+  Future<void> _submitListing() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _lastCreated = null;
+    });
 
     final payload = {
-      'crop_name': _cropNameCtrl.text.trim(),
-      'commodity': _cropNameCtrl.text.trim(),
-      'variety': _varietyCtrl.text.trim(),
+      'crop_name': _cropCtrl.text.trim(),
+      'commodity': _cropCtrl.text.trim(),
+      'variety': _varietyCtrl.text.trim().isNotEmpty ? _varietyCtrl.text.trim() : null,
       'category': _category,
-      'quantity': double.tryParse(_quantityCtrl.text.trim()) ?? 10.0,
+      'quantity': double.tryParse(_quantityCtrl.text) ?? 0.0,
       'unit': _unit,
-      'price_per_unit': double.tryParse(_priceCtrl.text.trim()) ?? 1000.0,
+      'price': double.tryParse(_priceCtrl.text) ?? 0.0,
       'location': _locationCtrl.text.trim(),
-      'state': _stateCtrl.text.trim().isNotEmpty ? _stateCtrl.text.trim() : 'India',
-      'harvest_date': DateTime.now().toIso8601String().substring(0, 10),
-      'description': _descCtrl.text.trim(),
-      'is_organic': _isOrganic,
-      'contact_phone': _phoneCtrl.text.trim(),
-      'status': 'active',
+      'district': _districtCtrl.text.trim().isNotEmpty ? _districtCtrl.text.trim() : null,
+      'state': _stateCtrl.text.trim().isNotEmpty ? _stateCtrl.text.trim() : null,
+      'farmer_name': _farmerCtrl.text.trim().isNotEmpty ? _farmerCtrl.text.trim() : null,
+      'status': _status,
     };
 
-    final cropProv = context.read<CropProvider>();
-    final success = await cropProv.createCrop(payload);
-
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      if (success) {
-        _formKey.currentState!.reset();
-        _cropNameCtrl.clear();
-        _varietyCtrl.clear();
-        _quantityCtrl.clear();
-        _priceCtrl.clear();
-        _locationCtrl.clear();
-        _stateCtrl.clear();
-        _phoneCtrl.clear();
-        _descCtrl.clear();
-
+    try {
+      final created = await _api.createCropListing(payload);
+      if (mounted) {
+        setState(() {
+          _lastCreated = created;
+          _isSubmitting = false;
+        });
+        _loadMyListings();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: AppTheme.primaryGreen,
-            content: Text('Crop listing broadcasted to MandiSync & ONDC Network!'),
-          ),
+          const SnackBar(content: Text("Crop listing published to ONDC network!"), backgroundColor: Color(0xFF0B7A4B)),
         );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red));
       }
     }
   }
 
+  Future<void> _deleteListing(String id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Withdraw Listing?"),
+        content: const Text("Are you sure you want to remove this harvest listing from the public marketplace?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text("Withdraw"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _api.deleteCropListing(id);
+        _loadMyListings();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Listing withdrawn.")));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        }
+      }
+    }
+  }
+
+  String _money(double? val) {
+    if (val == null) return "—";
+    return NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(val);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cropProv = context.watch<CropProvider>();
-    final myCrops = cropProv.farmerCrops;
-
     return Scaffold(
-      appBar: const MandiAppBar(title: 'Sell Crops & ONDC Listing'),
-      drawer: const AppNavDrawer(activeRoute: '/crop-listing'),
-      body: Column(
+      appBar: AppBar(
+        title: const Text("Sell Crops (Farmer Marketplace)"),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.post_add), text: "Post Crop"),
+            Tab(icon: Icon(Icons.inventory_2), text: "My Harvests"),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          const GovBar(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // FORM CARD
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Create New Crop Listing',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.darkSlate,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.subtleGreen,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'ONDC Beckn',
-                                    style: TextStyle(
-                                      color: AppTheme.primaryDark,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Text(
-                              'ONDC Beckn Standardized Agricultural Catalog',
-                              style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
-                            ),
-                            const Divider(height: 24),
+          _buildPostFormTab(),
+          _buildMyListingsTab(),
+        ],
+      ),
+    );
+  }
 
-                            TextFormField(
-                              controller: _cropNameCtrl,
-                              decoration: const InputDecoration(labelText: 'Crop / Commodity Name *', hintText: 'e.g. Tomato, Wheat, Potato'),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Enter commodity name' : null,
-                            ),
-                            const SizedBox(height: 12),
+  Widget _buildPostFormTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Create Crop Harvest Listing",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF123B2A)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "ONDC Beckn compliant format · Sent to /api/v1/crops",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                const SizedBox(height: 16),
 
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _varietyCtrl,
-                                    decoration: const InputDecoration(labelText: 'Variety', hintText: 'e.g. Hybrid, Desi'),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    initialValue: _category,
-                                    decoration: const InputDecoration(labelText: 'Category'),
-                                    items: ['Vegetables', 'Cereals', 'Fruits', 'Pulses', 'Oilseeds', 'Spices']
-                                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                                        .toList(),
-                                    onChanged: (v) => setState(() => _category = v!),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
+                TextFormField(
+                  controller: _cropCtrl,
+                  decoration: const InputDecoration(labelText: "Crop Name *", hintText: "e.g. Tomato, Wheat, Potato"),
+                  validator: (v) => v == null || v.isEmpty ? "Required" : null,
+                ),
+                const SizedBox(height: 12),
 
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _quantityCtrl,
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(labelText: 'Quantity *', hintText: '100'),
-                                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    initialValue: _unit,
-                                    decoration: const InputDecoration(labelText: 'Unit'),
-                                    items: ['Quintal', 'Kg', 'Ton', 'Bag']
-                                        .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                                        .toList(),
-                                    onChanged: (v) => setState(() => _unit = v!),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
+                TextFormField(
+                  controller: _varietyCtrl,
+                  decoration: const InputDecoration(labelText: "Variety", hintText: "e.g. Hybrid, Sharbati, Desi"),
+                ),
+                const SizedBox(height: 12),
 
-                            TextFormField(
-                              controller: _priceCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Price per $_unit (₹) *',
-                                hintText: 'e.g. 2400',
-                                prefixText: '₹ ',
-                              ),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                            ),
-                            const SizedBox(height: 12),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _locationCtrl,
-                                    decoration: const InputDecoration(labelText: 'Location / Mandi *', hintText: 'e.g. Nashik APMC'),
-                                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _stateCtrl,
-                                    decoration: const InputDecoration(labelText: 'State', hintText: 'e.g. Maharashtra'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            TextFormField(
-                              controller: _phoneCtrl,
-                              keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(labelText: 'Contact Phone *', hintText: '+91 98765 43210'),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-                            ),
-                            const SizedBox(height: 12),
-
-                            CheckboxListTile(
-                              value: _isOrganic,
-                              title: const Text('Organic Certified Produce', style: TextStyle(fontSize: 14)),
-                              subtitle: const Text('Check if grown without chemical pesticides/fertilizers', style: TextStyle(fontSize: 12)),
-                              contentPadding: EdgeInsets.zero,
-                              activeColor: AppTheme.primaryGreen,
-                              onChanged: (v) => setState(() => _isOrganic = v ?? false),
-                            ),
-                            const SizedBox(height: 16),
-
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                              onPressed: _isSubmitting ? null : _handleSubmit,
-                              child: _isSubmitting
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text('Publish Crop Listing to ONDC'),
-                            ),
-                          ],
-                        ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _category,
+                        decoration: const InputDecoration(labelText: "Category"),
+                        items: ["Vegetables", "Cereals", "Pulses", "Fruits", "Oilseeds", "Spices"]
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _category = v!),
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Active Harvest Listings',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.darkSlate),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (myCrops.isEmpty)
-                    const Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(child: Text('No active crops listed. Fill the form above.')),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _unit,
+                        decoration: const InputDecoration(labelText: "Unit"),
+                        items: ["quintal", "tonne", "kg", "crate", "bag"]
+                            .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _unit = v!),
                       ),
-                    )
-                  else
-                    ...myCrops.map((crop) => Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.subtleGreen,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Text('🌾', style: TextStyle(fontSize: 24)),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        crop.cropName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                      Text(
-                                        '${crop.quantity.toInt()} ${crop.unit} · ₹${crop.pricePerUnit.toInt()}/${crop.unit}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.primaryDark,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${crop.location}${crop.state != null ? ", ${crop.state}" : ""}',
-                                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 12.5),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed),
-                                  onPressed: () {
-                                    if (crop.id != null) {
-                                      cropProv.deleteCrop(crop.id);
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        )),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _quantityCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: "Quantity *", hintText: "50"),
+                        validator: (v) => v == null || v.isEmpty ? "Required" : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _priceCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: "Asking Price (₹/unit) *", hintText: "2400"),
+                        validator: (v) => v == null || v.isEmpty ? "Required" : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _locationCtrl,
+                  decoration: const InputDecoration(labelText: "Farm / Village Location *", hintText: "e.g. Chomu Farm"),
+                  validator: (v) => v == null || v.isEmpty ? "Required" : null,
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _districtCtrl,
+                        decoration: const InputDecoration(labelText: "District", hintText: "Jaipur"),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _stateCtrl,
+                        decoration: const InputDecoration(labelText: "State", hintText: "Rajasthan"),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                TextFormField(
+                  controller: _farmerCtrl,
+                  decoration: const InputDecoration(labelText: "Farmer Name", hintText: "Ramesh Kumar"),
+                ),
+                const SizedBox(height: 16),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSubmitting ? null : _submitListing,
+                    icon: _isSubmitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_circle),
+                    label: Text(_isSubmitting ? "Publishing..." : "🌾 Publish Harvest Listing"),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B7A4B), foregroundColor: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          if (_lastCreated != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAF7F0),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA7F3D0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "🎉 Harvest Listed Successfully",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF075B38)),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(6)),
+                        child: const Text("ONDC Active", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text("Listing ID: ${_lastCreated!.id}", style: const TextStyle(fontSize: 12)),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("AI Predicted Peak Price:"),
+                      Text(
+                        _money(_lastCreated!.aiPredictedMaxPrice),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0B7A4B)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("AI Recommended MSP Floor:"),
+                      Text(_money(_lastCreated!.aiRecommendedMsp), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ],
               ),
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildMyListingsTab() {
+    if (_isLoadingListings) return const Center(child: CircularProgressIndicator());
+    if (_myListings.isEmpty) {
+      return const Center(child: Text("You haven't posted any crop listings yet."));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadMyListings,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(12),
+        itemCount: _myListings.length,
+        itemBuilder: (context, i) {
+          final c = _myListings[i];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(c.cropName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(_money(c.price), style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0B7A4B))),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text("${c.quantity} ${c.unit} · ${c.location}"),
+                  if (c.aiPredictedMaxPrice != null)
+                    Text("AI Peak: ${_money(c.aiPredictedMaxPrice)}", style: const TextStyle(fontSize: 12, color: Color(0xFF0B7A4B))),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7F0),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(c.status, style: const TextStyle(fontSize: 11, color: Color(0xFF075B38))),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _deleteListing(c.id),
+                        icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                        label: const Text("Withdraw", style: TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

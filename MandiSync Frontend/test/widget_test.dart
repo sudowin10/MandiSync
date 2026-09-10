@@ -5,40 +5,26 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mandisync_flutter/main.dart';
-import 'package:mandisync_flutter/providers/app_provider.dart';
-import 'package:mandisync_flutter/providers/auth_provider.dart';
-import 'package:mandisync_flutter/providers/market_provider.dart';
-import 'package:mandisync_flutter/providers/crop_provider.dart';
-import 'package:mandisync_flutter/providers/logistics_provider.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('App smoke test', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const MandiSyncApp());
 
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
+    // Verify that our counter starts at 0.
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('1'), findsNothing);
 
-  testWidgets('MandiSyncApp smoke test', (WidgetTester tester) async {
-    // Build our app with providers and trigger a frame.
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AppProvider()),
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => MarketProvider()),
-          ChangeNotifierProvider(create: (_) => CropProvider()),
-          ChangeNotifierProvider(create: (_) => LogisticsProvider()),
-        ],
-        child: const MandiSyncApp(),
-      ),
-    );
+    // Tap the '+' icon and trigger a frame.
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pump();
 
-    // Verify that MandiSyncApp widget renders
-    expect(find.byType(MandiSyncApp), findsOneWidget);
+    // Verify that our counter has incremented.
+    expect(find.text('0'), findsNothing);
+    expect(find.text('1'), findsOneWidget);
   });
 }
